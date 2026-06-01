@@ -1,0 +1,46 @@
+name: Build Release APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Buildozer and Dependencies
+      run: |
+        pip install --upgrade pip
+        pip install buildozer cython virtualenv
+        sudo apt-get update
+        sudo apt-get install -y build-essential ccache git ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev
+
+    - name: Build Release Bundle with Buildozer
+      run: |
+        buildozer -v android release
+
+    - name: Sign APK
+      uses: r0adkll/sign-android-release@v1
+      id: sign_app
+      with:
+        releaseDirectory: bin
+        signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        alias: ${{ secrets.ANDROID_KEYALIAS }}
+        keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        keyPassword: ${{ secrets.ANDROID_KEYALIAS_PASSWORD }}
+
+    - name: Upload Signed APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: signed-release-apk
+        path: ${{ steps.sign_app.outputs.signedReleaseFile }}
+        
